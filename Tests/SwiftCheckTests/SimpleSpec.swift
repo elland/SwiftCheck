@@ -120,28 +120,28 @@ extension ArbitraryLargeFoo : Arbitrary {
 	}
 }
 
-let composedArbitraryLargeFoo = Gen<ArbitraryLargeFoo>.compose { c in
-	let evenInt16 = Int16.arbitrary.suchThat { $0 % 2 == 0 }
-	return ArbitraryLargeFoo(
-		a: c.generate(),
-		b: c.generate(using: evenInt16),
-		c: c.generate(),
-		d: c.generate(),
-		e: c.generate(),
-		f: c.generate(),
-		g: c.generate(),
-		h: c.generate(),
-		i: c.generate(),
-		j: c.generate(),
-		k: c.generate(),
-		l: (c.generate(), c.generate()),
-		m: (c.generate(), c.generate(), c.generate()),
-		n: (c.generate(), c.generate(), c.generate(), c.generate())
-	)
-}
-
 class SimpleSpec : XCTestCase {
 	func testAll() {
+        let composedArbitraryLargeFoo = Gen<ArbitraryLargeFoo>.compose { c in
+            let evenInt16 = Int16.arbitrary.suchThat { $0 % 2 == 0 }
+            return ArbitraryLargeFoo(
+                a: c.generate(),
+                b: c.generate(using: evenInt16),
+                c: c.generate(),
+                d: c.generate(),
+                e: c.generate(),
+                f: c.generate(),
+                g: c.generate(),
+                h: c.generate(),
+                i: c.generate(),
+                j: c.generate(),
+                k: c.generate(),
+                l: (c.generate(), c.generate()),
+                m: (c.generate(), c.generate(), c.generate()),
+                n: (c.generate(), c.generate(), c.generate(), c.generate())
+            )
+        }
+        
 		XCTAssert(fileCheckOutput {
 			// CHECK: *** Passed 100 tests
 			// CHECK-NEXT: .

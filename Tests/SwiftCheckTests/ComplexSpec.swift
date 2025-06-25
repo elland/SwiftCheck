@@ -12,16 +12,16 @@ import XCTest
 import FileCheck
 #endif
 
-let upper : Gen<Character> = Gen<Character>.fromElements(in: "A"..."Z")
-let lower : Gen<Character> = Gen<Character>.fromElements(in: "a"..."z")
-let numeric : Gen<Character> = Gen<Character>.fromElements(in: "0"..."9")
-let special : Gen<Character> = Gen<Character>.fromElements(of: ["!", "#", "$", "%", "&", "'", "*", "+", "-", "/", "=", "?", "^", "_", "`", "{", "|", "}", "~", "."])
-let hexDigits = Gen<Character>.one(of: [
-	Gen<Character>.fromElements(in: "A"..."F"),
-	numeric,
-])
 
 class ComplexSpec : XCTestCase {
+    let upper : Gen<Character> = Gen<Character>.fromElements(in: "A"..."Z")
+    let lower : Gen<Character> = Gen<Character>.fromElements(in: "a"..."z")
+    let numeric : Gen<Character> = Gen<Character>.fromElements(in: "0"..."9")
+    let special : Gen<Character> = Gen<Character>.fromElements(of: ["!", "#", "$", "%", "&", "'", "*", "+", "-", "/", "=", "?", "^", "_", "`", "{", "|", "}", "~", "."])
+    lazy var hexDigits = Gen<Character>.one(of: [
+        Gen<Character>.fromElements(in: "A"..."F"),
+        numeric,
+    ])
 	func testEmailAddressProperties() {
 		XCTAssert(fileCheckOutput(withPrefixes: ["CHECKEMAIL"]) {
 			let localEmail = Gen<Character>.one(of: [

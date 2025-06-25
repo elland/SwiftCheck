@@ -100,12 +100,15 @@ extension StdGen : Equatable, CustomStringConvertible {
 	}
 }
 
-private var theStdGen : StdGen = mkStdRNG(0)
+private actor TheStdGen {
+    static var shared : StdGen = mkStdRNG(0)
+
+}
 
 /// A library-provided standard random number generator.
 public func newStdGen() -> StdGen {
-	let (left, right) = theStdGen.split
-	theStdGen = left
+    let (left, right) = TheStdGen.shared.split
+    TheStdGen.shared = left
 	return right
 }
 

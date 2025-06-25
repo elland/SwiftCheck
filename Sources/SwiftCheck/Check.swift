@@ -161,12 +161,31 @@ infix operator <-
 /// Binds a Testable value to a property.
 public func <- (checker : AssertiveQuickCheck, test : @autoclosure @escaping () -> Testable) {
 	switch quickCheckWithResult(checker.args, test()) {
-	case let .failure(_, _, seed, sz, reason, _, _):
-		XCTFail(reason + "; Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+    case let .failure(_, _, seed, sz, reason, _, _):
+        let message = "\(reason); Replay with \(seed) and size \(sz)"
+
+        XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+        )
 	case let .noExpectedFailure(_, seed, sz, _, _):
-		XCTFail("Expected property to fail but it didn't.  Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+        let message = "Expected property to fail but it didn't.  Replay with \(seed) and size \(sz)"
+        XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+                )
 	case let .insufficientCoverage(_, seed, sz, _, _):
-		XCTFail("Property coverage insufficient.  Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+        let message = "Property coverage insufficient.  Replay with \(seed) and size \(sz)"
+        XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+                        )
 	default: ()
 	}
 }
@@ -175,11 +194,29 @@ public func <- (checker : AssertiveQuickCheck, test : @autoclosure @escaping () 
 public func <- (checker : AssertiveQuickCheck, test : () -> Testable) {
 	switch quickCheckWithResult(checker.args, test()) {
 	case let .failure(_, _, seed, sz, reason, _, _):
-		XCTFail(reason + "; Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+        let message = "\(reason); Replay with \(seed) and size \(sz)"
+		XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+        )
 	case let .noExpectedFailure(_, seed, sz, _, _):
-		XCTFail("Expected property to fail but it didn't.  Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+        let message = "Expected property to fail but it didn't.  Replay with \(seed) and size \(sz)"
+		XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+        )
 	case let .insufficientCoverage(_, seed, sz, _, _):
-		XCTFail("Property coverage insufficient.  Replay with \(seed) and size \(sz)", file: checker.file, line: checker.line)
+        let message = "Property coverage insufficient.  Replay with \(seed) and size \(sz)"
+		XCTFail(message, file: checker.file, line: checker.line)
+        Issue.record("\(message)",
+                     sourceLocation: SourceLocation(fileID: String(describing: checker.file),
+                                                    filePath: String(describing: checker.file),
+                                                    line: Int(checker.line), column: 1)
+        )
 	default: ()
 	}
 }
@@ -356,3 +393,4 @@ public func ^||^ (p1 : Testable, p2 : Testable) -> Property {
 }
 
 import XCTest
+import Testing
