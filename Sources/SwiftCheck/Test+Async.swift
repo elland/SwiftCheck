@@ -6,6 +6,7 @@
 //  Copyright © 2025 Igor Ranieri. All rights reserved.
 //
 
+import Dispatch
 import Foundation
 
 public func forAll<A>(_ pf: @escaping (A) async throws -> Testable) -> Property where A: Arbitrary {
@@ -96,15 +97,24 @@ public func forAllShrink<A>(_ gen: Gen<A>, shrinker: @escaping (A) -> [A], f: @e
 	}).again
 }
 
+private struct UncheckedSendable<T>: @unchecked Sendable {
+	var value: T
+
+	init(_ value: T) {
+		self.value = value
+	}
+}
+
 private func runAsyncAndWait<T>(_ operation: @escaping () async -> T) -> T {
-	var result: T!
+	var resultContainer = UncheckedSendable<T?>(nil)
 	let semaphore = DispatchSemaphore(value: 0)
+	let wrappedOperation = UncheckedSendable(operation)
 
 	Task.detached {
-		result = await operation()
+		resultContainer = UncheckedSendable(await wrappedOperation.value())
 		semaphore.signal()
 	}
 
 	semaphore.wait()
-	return result
+	return resultContainer.value!
 }

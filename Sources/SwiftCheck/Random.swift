@@ -28,7 +28,7 @@ public protocol RandomGeneneratorType {
 /// initial random number generator, or to get different results on each run by
 /// using the system-initialised generator or by supplying a seed from some
 /// other source.
-public struct StdGen : RandomGeneneratorType {
+public struct StdGen : RandomGeneneratorType, Sendable {
 	let seed1 : Int
 	let seed2 : Int
 
