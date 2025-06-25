@@ -8,9 +8,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 class BooleanIdentitySpec : XCTestCase {
 	func testAll() {

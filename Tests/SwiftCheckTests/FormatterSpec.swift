@@ -10,9 +10,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 struct Formatter<Value> {
 	let lengthLimit : UInt

@@ -8,9 +8,7 @@
 
 @testable import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 func ==(l : Property, r : Property) -> Bool {
 	let res1 = quickCheckWithResult(CheckerArguments(name: "", silence: true), l)

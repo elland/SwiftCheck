@@ -8,9 +8,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 enum MyException: String, Error, Arbitrary {
 	case phony
