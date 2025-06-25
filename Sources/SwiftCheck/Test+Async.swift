@@ -96,22 +96,15 @@ public func forAllShrink<A>(_ gen: Gen<A>, shrinker: @escaping (A) -> [A], f: @e
 	}).again
 }
 
-private func runAsyncAndWait<T>(_ operation: @Sendable @escaping () async -> T) -> T {
-	let semaphore = DispatchSemaphore(value: 0)
-	let queue = DispatchQueue(label: "syncResultQueue")
+private func runAsyncAndWait<T>(_ operation: @escaping () async -> T) -> T {
 	var result: T!
+	let semaphore = DispatchSemaphore(value: 0)
 
 	Task.detached {
-		let value = await operation()
-		queue.sync {
-			result = value
-		}
+		result = await operation()
 		semaphore.signal()
 	}
 
 	semaphore.wait()
-
-	return queue.sync {
-		result
-	}
+	return result
 }
