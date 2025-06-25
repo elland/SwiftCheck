@@ -8,9 +8,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 struct Name : Arbitrary, Equatable, Hashable, CustomStringConvertible {
 	let unName : String

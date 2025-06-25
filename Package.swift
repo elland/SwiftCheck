@@ -10,7 +10,7 @@ let package = Package(
 			targets: ["SwiftCheck"]),
 	],
 	dependencies: [
-		.package(url: "https://github.com/llvm-swift/FileCheck.git", from: "0.1.0")
+		.package(url: "https://github.com/llvm-swift/FileCheck.git", from: "0.2.6")
 	],
 	targets: [
 		.target(

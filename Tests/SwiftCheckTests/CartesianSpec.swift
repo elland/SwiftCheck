@@ -13,9 +13,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 import Foundation
 
 final class CartesianSpec : XCTestCase {

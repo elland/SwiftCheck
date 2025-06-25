@@ -8,9 +8,7 @@
 
 import SwiftCheck
 import XCTest
-#if SWIFT_PACKAGE
 import FileCheck
-#endif
 
 private func pack<A, B, C>(_ f : @escaping (A, B) -> C) -> ((A, B)) -> C {
   return { xs in f(xs.0, xs.1) }
