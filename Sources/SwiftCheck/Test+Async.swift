@@ -9,12 +9,16 @@
 import Dispatch
 import Foundation
 
-public func forAll<A>(_ pf: @escaping (A) async throws -> Testable) -> Property where A: Arbitrary {
+public typealias SendableTestable = Sendable & Testable
+
+public typealias SendableArbitrary = Sendable & Arbitrary
+
+public func forAll<A>(_ pf: @Sendable @escaping (A) async throws -> SendableTestable) -> Property where A: SendableArbitrary {
 	return forAllShrink(A.arbitrary, shrinker: A.shrink, f: pf)
 }
 
-public func forAll<A, B>(_ pf: @escaping (A, B) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary
+public func forAll<A, B>(_ pf: @Sendable @escaping (A, B) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary
 {
 	forAll { a in
 		forAll { b in
@@ -23,8 +27,8 @@ public func forAll<A, B>(_ pf: @escaping (A, B) async throws -> Testable) -> Pro
 	}
 }
 
-public func forAll<A, B, C>(_ pf: @escaping (A, B, C) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary, C: Arbitrary
+public func forAll<A, B, C>(_ pf: @Sendable @escaping (A, B, C) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c in
@@ -33,8 +37,8 @@ public func forAll<A, B, C>(_ pf: @escaping (A, B, C) async throws -> Testable) 
 	}
 }
 
-public func forAll<A, B, C, D>(_ pf: @escaping (A, B, C, D) async throws -> Testable) -> Property
-where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary
+public func forAll<A, B, C, D>(_ pf: @Sendable @escaping (A, B, C, D) async throws -> SendableTestable) -> Property
+where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary, D: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c, d in
@@ -43,8 +47,8 @@ where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary
 	}
 }
 
-public func forAll<A, B, C, D, E>(_ pf: @escaping (A, B, C, D, E) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary, E: Arbitrary
+public func forAll<A, B, C, D, E>(_ pf: @Sendable @escaping (A, B, C, D, E) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary, D: SendableArbitrary, E: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c, d, e in
@@ -53,8 +57,8 @@ public func forAll<A, B, C, D, E>(_ pf: @escaping (A, B, C, D, E) async throws -
 	}
 }
 
-public func forAll<A, B, C, D, E, F>(_ pf: @escaping (A, B, C, D, E, F) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary, E: Arbitrary, F: Arbitrary
+public func forAll<A, B, C, D, E, F>(_ pf: @Sendable @escaping (A, B, C, D, E, F) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary, D: SendableArbitrary, E: SendableArbitrary, F: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c, d, e, f in
@@ -63,8 +67,8 @@ public func forAll<A, B, C, D, E, F>(_ pf: @escaping (A, B, C, D, E, F) async th
 	}
 }
 
-public func forAll<A, B, C, D, E, F, G>(_ pf: @escaping (A, B, C, D, E, F, G) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary, E: Arbitrary, F: Arbitrary, G: Arbitrary
+public func forAll<A, B, C, D, E, F, G>(_ pf: @Sendable @escaping (A, B, C, D, E, F, G) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary, D: SendableArbitrary, E: SendableArbitrary, F: SendableArbitrary, G: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c, d, e, f, g in
@@ -73,8 +77,8 @@ public func forAll<A, B, C, D, E, F, G>(_ pf: @escaping (A, B, C, D, E, F, G) as
 	}
 }
 
-public func forAll<A, B, C, D, E, F, G, H>(_ pf: @escaping (A, B, C, D, E, F, G, H) async throws -> Testable) -> Property
-	where A: Arbitrary, B: Arbitrary, C: Arbitrary, D: Arbitrary, E: Arbitrary, F: Arbitrary, G: Arbitrary, H: Arbitrary
+public func forAll<A, B, C, D, E, F, G, H>(_ pf: @Sendable @escaping (A, B, C, D, E, F, G, H) async throws -> SendableTestable) -> Property
+	where A: SendableArbitrary, B: SendableArbitrary, C: SendableArbitrary, D: SendableArbitrary, E: SendableArbitrary, F: SendableArbitrary, G: SendableArbitrary, H: SendableArbitrary
 {
 	forAll { a in
 		forAll { b, c, d, e, f, g, h in
@@ -83,38 +87,39 @@ public func forAll<A, B, C, D, E, F, G, H>(_ pf: @escaping (A, B, C, D, E, F, G,
 	}
 }
 
-public func forAllShrink<A>(_ gen: Gen<A>, shrinker: @escaping (A) -> [A], f: @escaping (A) async throws -> Testable) -> Property {
+public func forAllShrink<A: Sendable>(_ gen: Gen<A>, shrinker: @escaping (A) -> [A], f: @Sendable @escaping (A) async throws -> SendableTestable) -> Property {
 	Property(gen.flatMap { x in
 		shrinking(shrinker, initial: x, prop: { xs in
-			runAsyncAndWait {
-				do {
-					return (try await f(xs)).counterexample(String(describing: xs))
-				} catch let e {
-					return TestResult.failed("Test case threw an exception: \"\(e)\"").counterexample(String(describing: xs))
-				}
+			let result: Result<SendableTestable, Error> = runAsyncAndWait {
+								do {
+									return .success(try await f(xs))
+								} catch let e {
+									return .failure(e)
+								}
+
+			}
+
+			switch result {
+			case .success(let testResult):
+				return testResult.counterexample(String(describing: xs))
+			case .failure(let e):
+				return TestResult.failed("Test case threw an exception: \"\(e)\"").counterexample(String(describing: xs))
 			}
 		}).unProperty
 	}).again
 }
 
-private struct UncheckedSendable<T>: @unchecked Sendable {
-	var value: T
+// MARK: -
 
-	init(_ value: T) {
-		self.value = value
-	}
-}
-
-private func runAsyncAndWait<T>(_ operation: @escaping () async -> T) -> T {
-	var resultContainer = UncheckedSendable<T?>(nil)
+private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
+	var result: T!
 	let semaphore = DispatchSemaphore(value: 0)
-	let wrappedOperation = UncheckedSendable(operation)
 
 	Task.detached {
-		resultContainer = UncheckedSendable(await wrappedOperation.value())
+		result = await operation()
 		semaphore.signal()
 	}
 
 	semaphore.wait()
-	return resultContainer.value!
+	return result
 }

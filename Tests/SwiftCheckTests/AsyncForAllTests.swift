@@ -79,17 +79,17 @@ struct AsyncForAllTests {
 		)
 	}
 
-	@Test func asyncForAllDeterministicTest() {
+	@Test func asyncForAllDeterministicTest() async {
 		let seed = StdGen(12345, 67890)
 		let args = CheckerArguments(replay: (seed, 10))
 
-		var firstRunValues: [Int] = []
-		var secondRunValues: [Int] = []
+		let firstCollector = Collector()
+		let secondCollector = Collector()
 
 		// First run
 		property("deterministic test run 1", arguments: args) <-
 		forAll { (x: Int) -> Bool in
-			firstRunValues.append(x)
+			await firstCollector.append(x)
 			try! await Task.sleep(nanoseconds: 100)
 			return true
 		}
@@ -97,13 +97,16 @@ struct AsyncForAllTests {
 		// Second run with same seed
 		property("deterministic test run 2", arguments: args) <-
 		forAll { (x: Int) -> Bool in
-			secondRunValues.append(x)
+			await secondCollector.append(x)
 			try! await Task.sleep(nanoseconds: 100)
 			return true
 		}
 
-		#expect(firstRunValues == secondRunValues)
-		#expect(firstRunValues.count > 0)
+		let firstCount = await firstCollector.values
+		let secondCount = await secondCollector.values
+
+		#expect(firstCount == secondCount)
+		#expect(firstCount.count > 0)
 	}
 
 	@Test func asyncForAllDifferentSeedsDifferentData() {
@@ -133,4 +136,16 @@ struct AsyncForAllTests {
 
 enum TestError: Error {
 	case overflow
+}
+
+actor Collector {
+	var values: [Int] = []
+
+	func append(_ value: Int) {
+		values.append(value)
+	}
+
+	func getValues() -> [Int] {
+		values
+	}
 }
