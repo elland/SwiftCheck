@@ -112,30 +112,21 @@ public func forAllShrink<A: Sendable>(_ gen: Gen<A>, shrinker: @escaping (A) -> 
 // MARK: -
 
 private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
-	let box: Box<T> = .init()
-	let group = DispatchGroup()
+	if Thread.isMainThread {
+		// Run the blocking code *on a background queue* to avoid deadlock
+		return DispatchQueue.global(qos: .userInitiated).sync {
+			runAsyncAndWait(operation)
+		}
+	}
 
-	group.enter()
+	let semaphore = DispatchSemaphore(value: 0)
+	var result: T?
+
 	Task.detached {
-		box.set(await operation())
-		group.leave()
+		result = await operation()
+		semaphore.signal()
 	}
 
-	group.wait()
-	return box.get()
-}
-
-final class Box<T: Sendable>: @unchecked Sendable {
-	private let queue = DispatchQueue(label: "result.sync")
-	private var _result: T?
-
-	init() {}
-
-	func set(_ value: T) {
-		queue.sync { _result = value }
-	}
-
-	func get() -> T {
-		queue.sync { _result! }
-	}
+	semaphore.wait()
+	return result!
 }
