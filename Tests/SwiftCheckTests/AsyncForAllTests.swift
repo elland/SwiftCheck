@@ -5,13 +5,15 @@
 //  Created by Igor Ranieri on 25.06.2025.
 //
 
-import SwiftCheck
+@testable import SwiftCheck
 import Foundation
 import Testing
 
+let PropertyTestRuns = 100
+
 struct AsyncForAllTests {
 	@Test func asyncForAllBasicTest() {
-		let args = CheckerArguments(replay: (StdGen(12345, 67890), 10))
+		let args = CheckerArguments(replay: (StdGen(12345, 67890), 10), maxAllowableSuccessfulTests: PropertyTestRuns)
 
 		property("async forAll works with simple property", arguments: args) <-
 		forAll { (x: Int) async -> Bool in
@@ -21,7 +23,9 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllErrorHandlingTest() {
-		property("async forAll handles errors correctly") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("async forAll handles errors correctly", arguments: args) <-
 		forAll { (x: Int) async throws -> Bool in
 			if x == Int.min {
 				throw TestError.overflow
@@ -32,7 +36,9 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllShrinkingTest() {
-		property("async forAll shrinks properly on failure") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("async forAll shrinks properly on failure", arguments: args) <-
 		forAll { (x: Int) async -> Bool in
 			try! await Task.sleep(nanoseconds: 200)
 			return x < 50  // This will fail and shrink
@@ -45,7 +51,7 @@ struct AsyncForAllTests {
 		(StdGen(11111, 22222), 20)
 	])
 	func asyncForAllParameterizedTest(seed: StdGen, size: Int) {
-		let args = CheckerArguments(replay: (seed, size))
+		let args = CheckerArguments(replay: (seed, size), maxAllowableSuccessfulTests: PropertyTestRuns)
 
 		property("parameterized async test", arguments: args) <-
 		forAll { (x: Int, y: String) async -> Bool in
@@ -55,29 +61,33 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllDifferentReturnTypes() {
-		property("async forAll works with Property return") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("async forAll works with Property return", arguments: args) <-
 		forAll { (x: Int, y: Int) async -> Property in
 			try! await Task.sleep(nanoseconds: 300)
 			return (x + y == y + x).counterexample("commutative addition failed")
 		}
 	}
 
-	@Test func asyncForAllPerformanceTest() {
+	@Test func asyncForAllSequentialExecutionTest() {
 		let start = Date()
+		let args = CheckerArguments(maxAllowableSuccessfulTests: 10) // Small number for timing test
 
-		property("async operations run concurrently, not sequentially") <-
+		property("async operations run sequentially as expected", arguments: args) <-
 		forAll { (x: Int) async -> Bool in
-			try! await Task.sleep(for: .milliseconds(1))  // 1ms * 100 = 100ms total
+			try! await Task.sleep(for: .milliseconds(10))  // 10ms * 10 = 100ms minimum
 			return true
 		}
 
 		let elapsed = Date().timeIntervalSince(start)
-		#expect(elapsed < 0.5)  // Should complete in under 500ms (100 * 1ms + overhead)
+		#expect(elapsed >= 0.1) // Should take at least 100ms
+		#expect(elapsed < 0.2)  // But not too much more than that
 	}
 
 	@Test func asyncForAllDeterministicTest() async {
 		let seed = StdGen(12345, 67890)
-		let args = CheckerArguments(replay: (seed, 10))
+		let args = CheckerArguments(replay: (seed, 10), maxAllowableSuccessfulTests: PropertyTestRuns)
 
 		let firstCollector = Collector()
 		let secondCollector = Collector()
@@ -111,8 +121,8 @@ struct AsyncForAllTests {
 
 		let seed1 = StdGen(11111, 22222)
 		let seed2 = StdGen(33333, 44444)
-		let args1 = CheckerArguments(replay: (seed1, 10))
-		let args2 = CheckerArguments(replay: (seed2, 10))
+		let args1 = CheckerArguments(replay: (seed1, 10), maxAllowableSuccessfulTests: PropertyTestRuns)
+		let args2 = CheckerArguments(replay: (seed2, 10), maxAllowableSuccessfulTests: PropertyTestRuns)
 
 		property("different seeds test 1", arguments: args1) <-
 		forAll { (x: Int) async -> Bool in
@@ -135,7 +145,9 @@ struct AsyncForAllTests {
 	// MARK: - Additional Tests
 
 	@Test func asyncForAllMultipleAsyncOps() {
-		property("multiple async operations work") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("multiple async operations work", arguments: args) <-
 		forAll { (x: Int, y: Int) async -> Bool in
 			let result1 = await asyncComputation(x)
 			let result2 = await asyncComputation(y)
@@ -147,13 +159,15 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllTupleVariants() {
-		property("3-tuple async forAll") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("3-tuple async forAll", arguments: args) <-
 		forAll { (a: Int, b: String, c: Bool) async -> Bool in
 			try! await Task.sleep(nanoseconds: 100)
 			return c || (!c)  // tautology
 		}
 
-		property("4-tuple async forAll") <-
+		property("4-tuple async forAll", arguments: args) <-
 		forAll { (a: Int8, b: Int16, c: Int32, d: Int64) async -> Bool in
 			try! await Task.sleep(nanoseconds: 100)
 			return Int64(a) < d || Int64(a) >= d  // tautology
@@ -162,9 +176,10 @@ struct AsyncForAllTests {
 
 	@Test func asyncForAllCancellationTest() async {
 		var wasFullyCancelled = false
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
 
 		let task = Task {
-			property("cancellable property") <-
+			property("cancellable property", arguments: args) <-
 			forAll { (x: Int) async throws -> Bool in
 				for _ in 0..<10 {
 					try Task.checkCancellation()
@@ -186,7 +201,9 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllConcurrentOperations() {
-		property("concurrent async operations") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("concurrent async operations", arguments: args) <-
 		forAll { (urls: [String]) async -> Bool in
 			// Simulate concurrent network requests
 			let results = await withTaskGroup(of: Int.self) { group in
@@ -210,8 +227,9 @@ struct AsyncForAllTests {
 
 	@Test func asyncForAllActorInteraction() async {
 		let sharedActor = SharedCounter()
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
 
-		property("actor state is consistent") <-
+		property("actor state is consistent", arguments: args) <-
 		forAll { (increments: Int8) async -> Bool in
 			let absoluteIncrements = abs(Int(increments))
 
@@ -231,7 +249,9 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllMainActorInteraction() {
-		property("main actor operations") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("main actor operations", arguments: args) <-
 		forAll { (value: String) async -> Bool in
 			let result = await MainActor.run {
 				// Simulate UI operation
@@ -243,18 +263,28 @@ struct AsyncForAllTests {
 	}
 
 	@Test func asyncForAllTimeoutBehavior() {
-		property("operations complete within timeout") <-
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("operations complete within timeout", arguments: args) <-
 		forAll { (delayMs: UInt8) async -> Bool in
 			let delay = min(UInt64(delayMs), 50) // Cap at 50ms
 
 			let result = await withTaskGroup(of: Bool.self) { group in
 				group.addTask {
-					try! await Task.sleep(nanoseconds: delay * 1_000_000)
+					do {
+						try await Task.sleep(for: .milliseconds(100 * delay))
+					} catch {
+						fatalError("Caught an error from delay sleep! \(error)")
+					}
 					return true
 				}
 
 				group.addTask {
-					try? await Task.sleep(nanoseconds: 100_000_000) // 100ms timeout
+					do {
+						try await Task.sleep(for: .milliseconds(100)) // 100ms timeout
+					} catch {
+						fatalError("Caught an error from sleep! \(error)")
+					}
 					return false
 				}
 
@@ -265,6 +295,30 @@ struct AsyncForAllTests {
 
 			return result == true // Should always complete before timeout
 		}
+	}
+
+	@Test func asyncForAllThreadSafetyStressTest() async {
+		let concurrentProperties = PropertyTestRuns
+		let testsPerProperty = 1000
+		let expectedTotal = concurrentProperties * testsPerProperty
+
+		let counter = ThreadSafeCounter()
+
+		await withTaskGroup(of: Void.self) { group in
+			for i in 0..<concurrentProperties {
+				group.addTask {
+					let args = CheckerArguments(maxAllowableSuccessfulTests: testsPerProperty)
+					property("concurrent property \(i)", arguments: args) <-
+					forAll { (x: Int) async -> Bool in
+						await counter.increment()
+						return true
+					}
+				}
+			}
+		}
+
+		let finalCount = await counter.value
+		#expect(finalCount == expectedTotal)
 	}
 }
 
@@ -297,4 +351,16 @@ actor SharedCounter {
 func asyncComputation(_ n: Int) async -> Int {
 	try! await Task.sleep(nanoseconds: 100)
 	return n * 2
+}
+
+actor ThreadSafeCounter {
+	private var count = 0
+
+	func increment() {
+		self.count += 1
+	}
+
+	var value: Int {
+		self.count
+	}
 }

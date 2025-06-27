@@ -112,15 +112,30 @@ public func forAllShrink<A: Sendable>(_ gen: Gen<A>, shrinker: @escaping (A) -> 
 // MARK: -
 
 private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
-	var result: T!
+	let box: Box<T> = .init()
 	let group = DispatchGroup()
 
 	group.enter()
 	Task.detached {
-		result = await operation()
+		box.set(await operation())
 		group.leave()
 	}
 
 	group.wait()
-	return result
+	return box.get()
+}
+
+final class Box<T: Sendable>: @unchecked Sendable {
+	private let queue = DispatchQueue(label: "result.sync")
+	private var _result: T?
+
+	init() {}
+
+	func set(_ value: T) {
+		queue.sync { _result = value }
+	}
+
+	func get() -> T {
+		queue.sync { _result! }
+	}
 }
