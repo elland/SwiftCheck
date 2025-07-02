@@ -13,6 +13,8 @@ public typealias SendableTestable = Sendable & Testable
 
 public typealias SendableArbitrary = Sendable & Arbitrary
 
+// MARK: - forAll { }
+
 public func forAll<A>(_ pf: @Sendable @escaping (A) async throws -> SendableTestable) -> Property where A: SendableArbitrary {
 	return forAllShrink(A.arbitrary, shrinker: A.shrink, f: pf)
 }
@@ -109,8 +111,87 @@ public func forAllShrink<A: Sendable>(_ gen: Gen<A>, shrinker: @escaping (A) -> 
 	}).again
 }
 
-// MARK: -
+// MARK: - forAll(Gen) { }
 
+public func forAll<A>(_ gen: Gen<A>, pf: @Sendable @escaping (A) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary
+{
+	return forAllShrink(gen, shrinker: A.shrink, f: pf)
+}
+
+public func forAll<A, B>(_ genA: Gen<A>, _ genB: Gen<B>, pf:  @Sendable @escaping (A, B) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, pf: { b in
+			try await pf(t, b)
+		})
+	})
+}
+
+public func forAll<A, B, C>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, pf: @Sendable @escaping (A, B, C) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, pf: { b, c in
+			try await pf(t, b, c)
+		})
+	})
+}
+
+public func forAll<A, B, C, D>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, _ genD: Gen<D>, pf: @Sendable @escaping (A, B, C, D) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, genD, pf: { b, c, d in
+			try await pf(t, b, c, d)
+		})
+	})
+}
+
+public func forAll<A, B, C, D, E>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, _ genD: Gen<D>, _ genE: Gen<E>, pf: @Sendable @escaping (A, B, C, D, E) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : SendableArbitrary, E : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, genD, genE, pf: { b, c, d, e in
+			try await pf(t, b, c, d, e)
+		})
+	})
+}
+
+public func forAll<A, B, C, D, E, F>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, _ genD: Gen<D>, _ genE: Gen<E>, _ genF: Gen<F>, pf: @Sendable @escaping (A, B, C, D, E, F) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : SendableArbitrary, E : SendableArbitrary, F : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, genD, genE, genF, pf: { b, c, d, e, f in
+			try await pf(t, b, c, d, e, f)
+		})
+	})
+}
+
+public func forAll<A, B, C, D, E, F, G>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, _ genD: Gen<D>, _ genE: Gen<E>, _ genF: Gen<F>, _ genG: Gen<G>, pf: @Sendable @escaping (A, B, C, D, E, F, G) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : SendableArbitrary, E : SendableArbitrary, F : SendableArbitrary, G : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, genD, genE, genF, genG, pf: { b, c, d, e, f, g in
+			try await pf(t, b, c, d, e, f, g)
+		})
+	})
+}
+
+public func forAll<A, B, C, D, E, F, G, H>(_ genA: Gen<A>, _ genB: Gen<B>, _ genC: Gen<C>, _ genD: Gen<D>, _ genE: Gen<E>, _ genF: Gen<F>, _ genG: Gen<G>, _ genH: Gen<H>, pf: @Sendable @escaping (A, B, C, D, E, F, G, H) async throws -> SendableTestable) -> Property
+where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : SendableArbitrary, E : SendableArbitrary, F : SendableArbitrary, G : SendableArbitrary, H : SendableArbitrary
+{
+	forAll(genA, pf: { t in
+		forAll(genB, genC, genD, genE, genF, genG, genH, pf: { b, c, d, e, f, g, h in
+			try await pf(t, b, c, d, e, f, g, h)
+		})
+	})
+}
+
+// MARK: - Helper
+
+// TODO: This can somehow still crash sometimes. Swift Concurrency feels broken here.
 private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
 	if Thread.isMainThread {
 		// Run the blocking code *on a background queue* to avoid deadlock
