@@ -194,20 +194,51 @@ where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : S
 // TODO: This can somehow still crash sometimes. Swift Concurrency feels broken here.
 private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
 	if Thread.isMainThread {
-		// Run the blocking code *on a background queue* to avoid deadlock
 		return DispatchQueue.global(qos: .userInitiated).sync {
 			runAsyncAndWait(operation)
 		}
 	}
 
 	let semaphore = DispatchSemaphore(value: 0)
-	var result: T?
+	let resultBox = SyncBox<T?>(nil)
 
 	Task.detached {
-		result = await operation()
+		let opResult = await operation()
+		resultBox.setSync(opResult)
 		semaphore.signal()
 	}
 
 	semaphore.wait()
-	return result!
+	return resultBox.get()!
+}
+
+final class SyncBox<T: Sendable>: @unchecked Sendable {
+	private var value: T
+	private let queue = DispatchQueue(label: "SyncBox", attributes: .concurrent)
+
+	init(_ value: T) {
+		self.value = value
+	}
+
+	func get() -> T {
+		self.queue.sync {
+			self.value
+		}
+	}
+
+	func set(_ newValue: T) {
+		self.queue.async(flags: .barrier) {
+			self.value = newValue
+		}
+	}
+
+	func setSync(_ newValue: T) {
+		self.queue.sync(flags: .barrier) { self.value = newValue }
+	}
+
+	func modify(_ transform: @Sendable @escaping (inout T) -> Void) {
+		self.queue.async(flags: .barrier) {
+			transform(&self.value)
+		}
+	}
 }
