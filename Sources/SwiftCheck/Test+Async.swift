@@ -92,18 +92,21 @@ public func forAll<A, B, C, D, E, F, G, H>(_ pf: @Sendable @escaping (A, B, C, D
 public func forAllShrink<A: Sendable>(_ gen: Gen<A>, shrinker: @escaping (A) -> [A], f: @Sendable @escaping (A) async throws -> SendableTestable) -> Property {
 	Property(gen.flatMap { x in
 		shrinking(shrinker, initial: x, prop: { xs in
-			let result: Result<SendableTestable, Error> = runAsyncAndWait {
-								do {
-									return .success(try await f(xs))
-								} catch let e {
-									return .failure(e)
-								}
+			let capturedF = f
+			let capturedXs = xs
 
+			let result: Result<SendableTestable, Error> = runAsyncAndWait {
+				do {
+					return .success(try await capturedF(capturedXs))
+				} catch let e {
+					return .failure(e)
+				}
+				
 			}
 
 			switch result {
 			case .success(let testResult):
-				return testResult.counterexample(String(describing: xs))
+				return testResult.counterexample(String(describing: capturedXs))
 			case .failure(let e):
 				return TestResult.failed("Test case threw an exception: \"\(e)\"").counterexample(String(describing: xs))
 			}
@@ -191,27 +194,6 @@ where A : SendableArbitrary, B : SendableArbitrary, C : SendableArbitrary, D : S
 
 // MARK: - Helper
 
-// TODO: This can somehow still crash sometimes. Swift Concurrency feels broken here.
-private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
-	if Thread.isMainThread {
-		return DispatchQueue.global(qos: .userInitiated).sync {
-			runAsyncAndWait(operation)
-		}
-	}
-
-	let semaphore = DispatchSemaphore(value: 0)
-	let resultBox = SyncBox<T?>(nil)
-
-	Task.detached {
-		let opResult = await operation()
-		resultBox.setSync(opResult)
-		semaphore.signal()
-	}
-
-	semaphore.wait()
-	return resultBox.get()!
-}
-
 final class SyncBox<T: Sendable>: @unchecked Sendable {
 	private var value: T
 	private let queue = DispatchQueue(label: "SyncBox", attributes: .concurrent)
@@ -241,4 +223,30 @@ final class SyncBox<T: Sendable>: @unchecked Sendable {
 			transform(&self.value)
 		}
 	}
+}
+
+// TODO: This can somehow still crash sometimes. Swift Concurrency feels broken here.
+private func runAsyncAndWait<T: Sendable>(_ operation: @Sendable @escaping () async -> T) -> T {
+	if Thread.isMainThread {
+		return DispatchQueue.global(qos: .userInitiated).sync {
+			runAsyncAndWait(operation)
+		}
+	}
+
+	let semaphore = DispatchSemaphore(value: 0)
+	let resultBox = SyncBox<T?>(nil)
+
+	Task.detached {
+		let opResult = await operation()
+		resultBox.setSync(opResult)
+		semaphore.signal()
+	}
+
+	semaphore.wait()
+
+	guard let result = resultBox.get() else {
+		fatalError("Operation failed, deallocated too soon?")
+	}
+
+	return result
 }

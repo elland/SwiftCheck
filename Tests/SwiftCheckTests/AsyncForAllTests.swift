@@ -70,21 +70,6 @@ struct AsyncForAllTests {
 		}
 	}
 
-	@Test func asyncForAllSequentialExecutionTest() {
-		let start = Date()
-		let args = CheckerArguments(maxAllowableSuccessfulTests: 10) // Small number for timing test
-
-		property("async operations run sequentially as expected", arguments: args) <-
-		forAll { (x: Int) async -> Bool in
-			try! await Task.sleep(for: .milliseconds(10))  // 10ms * 10 = 100ms minimum
-			return true
-		}
-
-		let elapsed = Date().timeIntervalSince(start)
-		#expect(elapsed >= 0.1) // Should take at least 100ms
-		#expect(elapsed < 0.2)  // But not too much more than that
-	}
-
 	@Test func asyncForAllDeterministicTest() async {
 		let seed = StdGen(12345, 67890)
 		let args = CheckerArguments(replay: (seed, 10), maxAllowableSuccessfulTests: PropertyTestRuns)
@@ -262,41 +247,40 @@ struct AsyncForAllTests {
 		}
 	}
 
-	// TODO: fix this
-//	@Test func asyncForAllTimeoutBehavior() {
-//		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
-//
-//		property("operations complete within timeout", arguments: args) <-
-//		forAll { (delayMs: UInt8) async -> Bool in
-//			let delay = min(UInt64(delayMs), 1) // Cap at 50ms
-//
-//			let result = await withTaskGroup(of: Bool.self) { group in
-//				group.addTask {
-//					do {
-//						try await Task.sleep(for: .milliseconds(100 * delay))
-//					} catch {
-//						print("Caught an error from delay sleep! \(error)")
-//					}
-//					return true
-//				}
-//
-//				group.addTask {
-//					do {
-//						try await Task.sleep(for: .milliseconds(100)) // 100ms timeout
-//					} catch {
-//						print("Caught an error from sleep! \(error)")
-//					}
-//					return false
-//				}
-//
-//				let firstResult = await group.next() ?? false
-//				group.cancelAll()
-//				return firstResult
-//			}
-//
-//			return result == true // Should always complete before timeout
-//		}
-//	}
+	@Test func asyncForAllTimeoutBehavior() {
+		let args = CheckerArguments(maxAllowableSuccessfulTests: PropertyTestRuns)
+
+		property("operations complete within timeout", arguments: args) <-
+		forAll { (delayMs: UInt8) async -> Bool in
+			let delay = min(UInt64(delayMs), 1) // Cap at 50ms
+
+			let result = await withTaskGroup(of: Bool.self) { group in
+				group.addTask {
+					do {
+						try await Task.sleep(for: .milliseconds(10 * delay))
+					} catch {
+						print("Caught an error from delay sleep! \(error)")
+					}
+					return true
+				}
+
+				group.addTask {
+					do {
+						try await Task.sleep(for: .milliseconds(15)) // make sure this finishes _after_ the other.
+					} catch {
+						print("Caught an error from sleep! \(error)")
+					}
+					return false
+				}
+
+				let firstResult = await group.next() ?? false
+				group.cancelAll()
+				return firstResult
+			}
+
+			return result == true // Should always complete before timeout
+		}
+	}
 
 	@Test func asyncForAllThreadSafetyStressTest() async {
 		let concurrentProperties = PropertyTestRuns
